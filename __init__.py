@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Video Mocap to Rigify",
     "author": "Kabrownie.digital",
-    "version": (0, 2, 0),
+    "version": (0, 2, 1),
     "blender": (3, 6, 0),
     "location": "View3D > Sidebar > Mocap",
     "description": "Extract pose from a video with MediaPipe and retarget onto a Rigify rig",
