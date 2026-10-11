@@ -26,6 +26,9 @@ def mediapipe_available():
     global _MP_STATE
     if _MP_STATE is None:
         try:
+            modules = os.path.join(os.path.dirname(__file__), "modules")
+            if os.path.isdir(modules) and modules not in sys.path:
+                sys.path.insert(0, modules)
             import mediapipe  # noqa: F401
             import cv2        # noqa: F401
             _MP_STATE = True
@@ -450,8 +453,11 @@ class MOCAP_OT_install_mediapipe(bpy.types.Operator):
                 "'install', '--upgrade', '--disable-pip-version-check', "
                 "'--no-input'] + sys.argv[1:]))"
             )
+            modules = os.path.join(os.path.dirname(__file__), "modules")
+            os.makedirs(modules, exist_ok=True)
             self._process = subprocess.Popen([
                 python, "-c", install_script,
+                "--target", modules,
                 "mediapipe", "opencv-python",
             ], stdout=self._log_file, stderr=subprocess.STDOUT)
             self._log_file.close()
@@ -464,6 +470,7 @@ class MOCAP_OT_install_mediapipe(bpy.types.Operator):
 
         context.scene.mocap_installing = True
         context.scene.mocap_install_status = "Installing MediaPipe and OpenCV..."
+        context.scene.mocap_install_log = ""
         context.scene.mocap_install_started = time.monotonic()
         context.window_manager.progress_begin(0, 100)
         context.window_manager.progress_update(5)
@@ -491,12 +498,13 @@ class MOCAP_OT_install_mediapipe(bpy.types.Operator):
             return {"RUNNING_MODAL"}
 
         if returncode != 0:
-            detail = self._read_install_status()
+            detail = self._read_install_log()
             self._finish(
                 context,
-                f"pip failed with code {returncode}: {detail}",
+                f"pip failed with code {returncode}.",
                 error=True,
             )
+            context.scene.mocap_install_log = detail
             return {"CANCELLED"}
 
         reset_mediapipe_cache()
@@ -504,12 +512,13 @@ class MOCAP_OT_install_mediapipe(bpy.types.Operator):
             self._finish(context, "MediaPipe installed successfully.")
             return {"FINISHED"}
 
-        detail = self._read_install_status()
+        detail = self._read_install_log()
         self._finish(
             context,
-            f"Install finished, but import still fails: {detail}",
+            "Install finished, but import still fails.",
             error=True,
         )
+        context.scene.mocap_install_log = detail
         return {"CANCELLED"}
 
     def _finish(self, context, message, error=False):
@@ -518,8 +527,17 @@ class MOCAP_OT_install_mediapipe(bpy.types.Operator):
             context.window_manager.event_timer_remove(self._timer)
         context.scene.mocap_installing = False
         context.scene.mocap_install_status = message[:240]
+        context.scene.mocap_install_log = ""
         self._cleanup_install()
         self.report({"ERROR" if error else "INFO"}, message)
+
+    def _read_install_log(self):
+        try:
+            with open(self._log_path, "r", encoding="utf-8", errors="replace") as log:
+                lines = [line.strip() for line in log if line.strip()]
+            return "\n".join(lines[-8:])[:1200] or "No pip output was captured."
+        except OSError as exc:
+            return f"Could not read pip log: {exc}"
 
     def _read_install_status(self):
         try:
@@ -680,6 +698,10 @@ class MOCAP_PT_panel(bpy.types.Panel):
             box.label(text="Requires internet; progress is shown here.", icon="INFO")
             if scn.mocap_install_status:
                 box.label(text=scn.mocap_install_status, icon="INFO")
+            if scn.mocap_install_log:
+                box.label(text="Last pip output:", icon="CONSOLE")
+                for line in scn.mocap_install_log.splitlines():
+                    box.label(text=line[:160])
             return
 
         # Source -----------------------------------------------------------
@@ -790,6 +812,9 @@ def register():
     scn.mocap_install_started = bpy.props.FloatProperty(
         name="Install Start Time", default=0.0)
 
+    scn.mocap_install_log = bpy.props.StringProperty(
+        name="Install Log", default="")
+
 
 def unregister():
     for prop in ("mocap_video_path", "mocap_target", "mocap_scale",
@@ -797,7 +822,7 @@ def unregister():
                  "mocap_mirror", "mocap_flip_depth", "mocap_force_fk",
                  "mocap_model_complexity", "mocap_min_visibility",
                  "mocap_installing", "mocap_install_status",
-                 "mocap_install_started"):
+                 "mocap_install_started", "mocap_install_log"):
         if hasattr(bpy.types.Scene, prop):
             delattr(bpy.types.Scene, prop)
 

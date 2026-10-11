@@ -52,11 +52,10 @@ The add-on includes aliases for common Rigify names such as `spine`,
 
 - **MediaPipe is not installed:** Click **Install MediaPipe + OpenCV** and wait
   for the status to finish. An internet connection is required.
-- **Installation fails:** The add-on displays the last pip error in the Mocap
-  panel. Confirm that Blender can access the internet, then retry. If Blender
-  was installed in a protected system directory, install it somewhere your
-  user account can write to or run Blender with an appropriate Python package
-  directory.
+- **Installation fails:** The add-on displays the last pip output lines in the
+  Mocap panel. Confirm that Blender can access the internet, then retry.
+  Dependencies are installed into an add-on-local `modules` directory, so
+  Blender's protected bundled Python directory does not need to be writable.
 - **Video file not found:** Use an absolute or Blender-relative path and verify
   that the file still exists.
 - **Poor tracking:** Improve lighting, keep the subject in frame, lower the
