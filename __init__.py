@@ -40,17 +40,23 @@ def reset_mediapipe_cache():
 
 
 def find_blender_python():
-    """Return the Python interpreter that ships with Blender 3.6."""
+    """Return the Python interpreter bundled with the running Blender."""
     exe = sys.executable
-    if exe and "python" in os.path.basename(exe).lower():
+    if exe and os.path.basename(exe).lower().startswith("python") and os.path.isfile(exe):
         return exe
 
-    base = os.path.dirname(bpy.app.binary_path)
-    for ver in ("3.11", "3.10", "3.9"):
-        for name in ("python3.11", "python3.10", "python3.9", "python3", "python"):
-            p = os.path.join(base, ver, "python", "bin", name)
-            if os.path.exists(p):
-                return p
+    binary_dir = os.path.dirname(os.path.abspath(bpy.app.binary_path))
+    candidates = [
+        os.path.join(sys.prefix, "bin", "python"),
+        os.path.join(sys.prefix, "bin", "python3"),
+        os.path.join(binary_dir, "python", "bin", "python3"),
+        os.path.join(binary_dir, "python", "bin", "python3.11"),
+        os.path.join(binary_dir, "..", "python", "bin", "python3"),
+    ]
+    for candidate in candidates:
+        candidate = os.path.abspath(candidate)
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
     return None
 
 
@@ -437,9 +443,15 @@ class MOCAP_OT_install_mediapipe(bpy.types.Operator):
             self._log_file = tempfile.NamedTemporaryFile(
                 mode="w", suffix=".log", prefix="mocap-pip-", delete=False)
             self._log_path = self._log_file.name
+            install_script = (
+                "import ensurepip, subprocess, sys; "
+                "ensurepip.bootstrap(upgrade=True); "
+                "raise SystemExit(subprocess.call([sys.executable, '-m', 'pip', "
+                "'install', '--upgrade', '--disable-pip-version-check', "
+                "'--no-input'] + sys.argv[1:]))"
+            )
             self._process = subprocess.Popen([
-                python, "-m", "pip", "install", "--upgrade",
-                "--disable-pip-version-check", "--no-input",
+                python, "-c", install_script,
                 "mediapipe", "opencv-python",
             ], stdout=self._log_file, stderr=subprocess.STDOUT)
             self._log_file.close()
@@ -479,7 +491,12 @@ class MOCAP_OT_install_mediapipe(bpy.types.Operator):
             return {"RUNNING_MODAL"}
 
         if returncode != 0:
-            self._finish(context, f"pip failed with code {returncode}.", error=True)
+            detail = self._read_install_status()
+            self._finish(
+                context,
+                f"pip failed with code {returncode}: {detail}",
+                error=True,
+            )
             return {"CANCELLED"}
 
         reset_mediapipe_cache()
@@ -487,9 +504,10 @@ class MOCAP_OT_install_mediapipe(bpy.types.Operator):
             self._finish(context, "MediaPipe installed successfully.")
             return {"FINISHED"}
 
+        detail = self._read_install_status()
         self._finish(
             context,
-            "Install finished, but import still fails. Restart Blender.",
+            f"Install finished, but import still fails: {detail}",
             error=True,
         )
         return {"CANCELLED"}
@@ -499,7 +517,7 @@ class MOCAP_OT_install_mediapipe(bpy.types.Operator):
         if getattr(self, "_timer", None) is not None:
             context.window_manager.event_timer_remove(self._timer)
         context.scene.mocap_installing = False
-        context.scene.mocap_install_status = ""
+        context.scene.mocap_install_status = message[:240]
         self._cleanup_install()
         self.report({"ERROR" if error else "INFO"}, message)
 
@@ -660,6 +678,8 @@ class MOCAP_PT_panel(bpy.types.Panel):
             box.label(text="MediaPipe not installed", icon="ERROR")
             box.operator("mocap.install_mediapipe", icon="IMPORT")
             box.label(text="Requires internet; progress is shown here.", icon="INFO")
+            if scn.mocap_install_status:
+                box.label(text=scn.mocap_install_status, icon="INFO")
             return
 
         # Source -----------------------------------------------------------
