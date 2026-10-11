@@ -63,5 +63,4 @@ The add-on includes aliases for common Rigify names such as `spine`,
 
 ## License
 
-No license file is currently included. Add a license before redistributing or
-incorporating this add-on into another project.
+This project is licensed under the [MIT License](./LICENSE).
