@@ -22,7 +22,9 @@ Python. The installation runs in the background so Blender remains responsive.
 4. Enable **Video Mocap to Rigify**.
 5. Open the 3D View sidebar with `N`, then select the **Mocap** tab.
 6. Click **Install MediaPipe + OpenCV**. Installation progress and the latest
-   pip status are shown in the panel. Press `Esc` to cancel.
+   pip status are shown in the panel. The progress indicator moves while the
+   install is active; it is intentionally indeterminate because pip does not
+   expose one combined percentage for both packages. Press `Esc` to cancel.
 
 If Blender cannot import the packages after installation, restart Blender and
 try the add-on again.

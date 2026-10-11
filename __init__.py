@@ -490,8 +490,11 @@ class MOCAP_OT_install_mediapipe(bpy.types.Operator):
         elapsed = int(time.monotonic() - context.scene.mocap_install_started)
         pip_status = self._read_install_status()
         context.scene.mocap_install_status = (
-            f"{pip_status} ({elapsed}s elapsed)")
-        context.window_manager.progress_update(min(95, 5 + elapsed // 2))
+            f"{pip_status} ({elapsed}s elapsed; installation still running)")
+        progress = 10 + ((elapsed * 3) % 80)
+        context.window_manager.progress_update(progress)
+        for area in context.screen.areas:
+            area.tag_redraw()
 
         returncode = self._process.poll()
         if returncode is None:
