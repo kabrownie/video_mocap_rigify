@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Video Mocap to Rigify",
     "author": "Kabrownie.digital",
-    "version": (0, 2, 1),
+    "version": (0, 2, 2),
     "blender": (3, 6, 0),
     "location": "View3D > Sidebar > Mocap",
     "description": "Extract pose from a video with MediaPipe and retarget onto a Rigify rig",
@@ -304,6 +304,11 @@ def extract_landmarks(video_path, model_complexity=2, min_visibility=0.3,
     import cv2
     import mediapipe as mp
 
+    if not hasattr(mp, "solutions") or not hasattr(mp.solutions, "pose"):
+        raise RuntimeError(
+            "Installed MediaPipe is incompatible. Reinstall the add-on "
+            "dependencies to use MediaPipe 0.10.21.")
+
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise RuntimeError(f"Could not open video: {video_path}")
@@ -458,7 +463,7 @@ class MOCAP_OT_install_mediapipe(bpy.types.Operator):
             self._process = subprocess.Popen([
                 python, "-c", install_script,
                 "--target", modules,
-                "mediapipe", "opencv-python",
+                "mediapipe==0.10.21", "opencv-python",
             ], stdout=self._log_file, stderr=subprocess.STDOUT)
             self._log_file.close()
         except (OSError, subprocess.SubprocessError) as exc:

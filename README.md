@@ -11,8 +11,10 @@ and retargets them onto a Rigify armature.
 - A video containing a visible human subject
 - A Rigify armature, or another armature using compatible bone names
 
-The add-on installs `mediapipe` and `opencv-python` into Blender's bundled
-Python. The installation runs in the background so Blender remains responsive.
+The add-on installs MediaPipe `0.10.21` and `opencv-python` into Blender's
+bundled Python. MediaPipe `0.10.21` is pinned because this add-on uses the
+legacy `mediapipe.solutions.pose` API. Installation runs in the background so
+Blender remains responsive.
 
 ## Installation
 
@@ -58,6 +60,9 @@ The add-on includes aliases for common Rigify names such as `spine`,
   Mocap panel. Confirm that Blender can access the internet, then retry.
   Dependencies are installed into an add-on-local `modules` directory, so
   Blender's protected bundled Python directory does not need to be writable.
+- **`mediapipe` has no attribute `solutions`:** Reinstall the add-on using the
+  latest release. It pins MediaPipe to the legacy-compatible `0.10.21`
+  version.
 - **Video file not found:** Use an absolute or Blender-relative path and verify
   that the file still exists.
 - **Poor tracking:** Improve lighting, keep the subject in frame, lower the
